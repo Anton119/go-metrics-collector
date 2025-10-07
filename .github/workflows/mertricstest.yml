@@ -60,7 +60,6 @@ jobs:
       - name: Build server binary
         working-directory: ./cmd/server
         run: |
-          cd cmd/server
           go build -buildvcs=false -o server
 
       - name: "Code increment #1"
@@ -87,7 +86,6 @@ jobs:
       - name: Build agent binary
         working-directory: ./cmd/agent
         run: |
-          cd cmd/agent
           go build -buildvcs=false  -o agent
 
       - name: "Code increment #2"
