@@ -58,6 +58,7 @@ jobs:
 
 
       - name: Build server binary
+        working-directory: ./cmd/server
         run: |
           cd cmd/server
           go build -buildvcs=false -o server
@@ -84,6 +85,7 @@ jobs:
             -binary-path=cmd/server/server
 
       - name: Build agent binary
+        working-directory: ./cmd/agent
         run: |
           cd cmd/agent
           go build -buildvcs=false  -o agent
