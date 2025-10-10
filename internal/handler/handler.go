@@ -26,6 +26,16 @@ func (h *MetricsHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err := h.svc.UpdateMetrics(r.URL.Path)
+	if err != nil {
+
+		switch err.Error() {
+		case "имя метрики не указано", "неверный формат пути":
+			http.Error(w, err.Error(), http.StatusNotFound)
+		default:
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+		return
+	}
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
