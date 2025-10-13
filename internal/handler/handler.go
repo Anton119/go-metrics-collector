@@ -20,6 +20,8 @@ func NewMetricsHandler(svc *service.MetricsService) *MetricsHandler {
 }
 
 func (h *MetricsHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("[Server] UpdateMetrics called: %s %s\n", r.Method, r.URL.Path)
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "неверный метод запроса", http.StatusBadRequest)
 		return
@@ -27,6 +29,7 @@ func (h *MetricsHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 
 	err := h.svc.UpdateMetrics(r.URL.Path)
 	if err != nil {
+		fmt.Printf("[Server] Error updating metric: %s, %v\n", r.URL.Path, err)
 
 		switch err.Error() {
 		case "имя метрики не указано", "неверный формат пути":
@@ -43,11 +46,14 @@ func (h *MetricsHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	fmt.Printf("[Server] Metric updated successfully: %s\n", r.URL.Path)
 	w.Write([]byte("ok"))
 
 }
 
 func (h *MetricsHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("[Server] GetMetrics called: %s %s\n", r.Method, r.URL.Path)
+
 	if r.Method != http.MethodGet {
 		http.Error(w, "неверный метод запроса", http.StatusBadRequest)
 		return
@@ -72,6 +78,7 @@ func (h *MetricsHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "тип метрики не совпадает", http.StatusBadRequest)
 		return
 	}
+	fmt.Printf("[Server] Returning metric: %s = ", id)
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	if mType == models.Gauge {
