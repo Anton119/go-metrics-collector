@@ -42,6 +42,10 @@ func (s *MetricsService) UpdateMetrics(mType, id, val string) error {
 		if err != nil {
 			return errors.New("неверное значение для counter")
 		}
+
+		if existing, ok := s.storage.GetMetrics(id); ok && existing.Delta != nil {
+			i += *existing.Delta
+		}
 		metric.Delta = &i
 
 	default:
