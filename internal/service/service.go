@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 
 	models "github.com/Anton119/go-metrics-collector.git/internal/model"
 	"github.com/Anton119/go-metrics-collector.git/internal/repository"
@@ -20,21 +19,7 @@ func NewMetricsService(storage *repository.MemStorage) *MetricsService {
 	}
 }
 
-func (s *MetricsService) UpdateMetrics(path string) error {
-	parts := strings.Split(strings.Trim(path, "/"), "/")
-
-	if len(parts) == 0 {
-		return errors.New("пустой запрос")
-	}
-
-	if len(parts) != 4 {
-		return errors.New("неверный формат пути")
-	}
-
-	mType := parts[1]
-	id := parts[2]
-	val := parts[3]
-
+func (s *MetricsService) UpdateMetrics(mType, id, val string) error {
 	if id == "" {
 		return errors.New("имя метрики не указано")
 	}
@@ -48,23 +33,23 @@ func (s *MetricsService) UpdateMetrics(path string) error {
 	case models.Gauge:
 		f, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return fmt.Errorf("некорректное значение для gauge")
+			return errors.New("неверное значение для gauge")
 		}
 		metric.Value = &f
 
 	case models.Counter:
 		i, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return fmt.Errorf("некорректное значение для counter")
+			return errors.New("неверное значение для counter")
 		}
 		metric.Delta = &i
+
 	default:
-		return fmt.Errorf("неизвестный тип метрики")
+		return errors.New("неизвестный тип метрики")
 	}
 
 	s.storage.SetMetrics(metric)
 	return nil
-
 }
 
 func (s *MetricsService) GetMetrics(id string) (models.Metrics, error) {

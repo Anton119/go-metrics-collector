@@ -15,7 +15,7 @@ func main() {
 	h := handler.NewMetricsHandler(svc)
 
 	r := chi.NewRouter()
-	r.Post("/update/", h.UpdateMetrics)
+	r.Post("/update/{type}/{name}/{value}", h.UpdateMetrics)
 	r.Get("/value/{type}/{name}", h.GetMetrics)
 	r.Get("/", h.GetAllMetrics)
 

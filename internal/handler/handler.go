@@ -27,13 +27,18 @@ func (h *MetricsHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.svc.UpdateMetrics(r.URL.Path)
+	mType := chi.URLParam(r, "type")
+	id := chi.URLParam(r, "name")
+	value := chi.URLParam(r, "value")
+
+	err := h.svc.UpdateMetrics(mType, id, value)
+
 	if err != nil {
-		fmt.Printf("[Server] Error updating metric: %s, %v\n", r.URL.Path, err)
+		fmt.Printf("[Server] Error updating metric: %s/%s = %s, %v\n", mType, id, value, err)
 
 		switch err.Error() {
-		case "имя метрики не указано", "неверный формат пути":
-			http.Error(w, err.Error(), http.StatusNotFound)
+		case "имя метрики не указано", "неверный формат значения", "неверный тип метрики":
+			http.Error(w, err.Error(), http.StatusBadRequest)
 		default:
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
@@ -41,7 +46,7 @@ func (h *MetricsHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	fmt.Printf("[Server] Metric updated successfully: %s\n", r.URL.Path)
+	fmt.Printf("[Server] Metric updated successfully: %s/%s = %s\n", mType, id, value)
 	w.Write([]byte("ok"))
 
 }
