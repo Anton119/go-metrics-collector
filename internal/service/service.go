@@ -74,3 +74,12 @@ func (s *MetricsService) GetMetrics(id string) (models.Metrics, error) {
 	}
 	return m, nil
 }
+
+func (s *MetricsService) GetAllMetrics() ([]models.Metrics, error) {
+	metrics := s.storage.GetAllMetrics()
+	if len(metrics) == 0 {
+		return []models.Metrics{}, fmt.Errorf("метрики не найдены")
+	}
+
+	return metrics, nil
+}

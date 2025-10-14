@@ -6,6 +6,7 @@ import (
 	"github.com/Anton119/go-metrics-collector.git/internal/handler"
 	"github.com/Anton119/go-metrics-collector.git/internal/repository"
 	"github.com/Anton119/go-metrics-collector.git/internal/service"
+	"github.com/go-chi/chi/v5"
 )
 
 func main() {
@@ -13,11 +14,12 @@ func main() {
 	svc := service.NewMetricsService(storage)
 	h := handler.NewMetricsHandler(svc)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/update/", h.UpdateMetrics)
-	mux.HandleFunc("/value/", h.GetMetrics)
+	r := chi.NewRouter()
+	r.Post("/update/", h.UpdateMetrics)
+	r.Get("/value/{type}/{name}", h.GetMetrics)
+	r.Get("/", h.GetAllMetrics)
 
-	if err := http.ListenAndServe(":8080", mux); err != nil {
+	if err := http.ListenAndServe(":8080", r); err != nil {
 		panic(err)
 	}
 

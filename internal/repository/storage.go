@@ -20,3 +20,12 @@ func (s *MemStorage) GetMetrics(id string) (models.Metrics, bool) {
 	m, ok := s.metrics[id]
 	return m, ok
 }
+
+func (s *MemStorage) GetAllMetrics() []models.Metrics {
+	metrics := make([]models.Metrics, 0, len(s.metrics))
+	for _, m := range s.metrics {
+		metrics = append(metrics, m)
+	}
+
+	return metrics
+}

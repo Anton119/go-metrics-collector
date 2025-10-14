@@ -3,10 +3,10 @@ package handler
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
 	models "github.com/Anton119/go-metrics-collector.git/internal/model"
 	"github.com/Anton119/go-metrics-collector.git/internal/service"
+	"github.com/go-chi/chi/v5"
 )
 
 type MetricsHandler struct {
@@ -40,11 +40,6 @@ func (h *MetricsHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	fmt.Printf("[Server] Metric updated successfully: %s\n", r.URL.Path)
 	w.Write([]byte("ok"))
@@ -59,14 +54,8 @@ func (h *MetricsHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	if len(parts) != 3 {
-		http.Error(w, "неверный формат пути", http.StatusBadRequest)
-		return
-	}
-
-	mType := parts[1]
-	id := parts[2]
+	mType := chi.URLParam(r, "type")
+	id := chi.URLParam(r, "name")
 
 	metrics, err := h.svc.GetMetrics(id)
 	if err != nil {
@@ -88,4 +77,34 @@ func (h *MetricsHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Write([]byte("значение не установлено"))
 	}
+}
+
+func (h *MetricsHandler) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "неверный метод запроса", http.StatusBadRequest)
+		return
+	}
+
+	allMetrics, err := h.svc.GetAllMetrics()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	//пишет строку в w и добавляет перенос строки
+	fmt.Fprintln(w, "<html><body><ul>")
+
+	for _, m := range allMetrics {
+		var value string
+		if m.MType == models.Gauge {
+			value = fmt.Sprintf("%g", *m.Value)
+		} else {
+			value = fmt.Sprintf("%d", *m.Delta)
+		}
+		fmt.Fprintf(w, "<li>%s (%s) = %s</li>", m.ID, m.MType, value)
+	}
+
+	fmt.Fprintln(w, "</ul></body></html>")
 }

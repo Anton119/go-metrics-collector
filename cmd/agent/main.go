@@ -19,5 +19,5 @@ func main() {
 	go myAgent.StartPolling()
 	go myAgent.StartReporting()
 
-	select {} // держим main живым
+	select {}
 }
