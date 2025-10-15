@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"strings"
 	"time"
 
 	"github.com/Anton119/go-metrics-collector.git/internal/agent"
@@ -9,13 +10,18 @@ import (
 )
 
 func main() {
+	flags.ParseFlags()
+
 	collector := agent.NewCollector()
 
-	flags.ParseFlags()
+	serverAddress := flags.FlagRunAddr
+	if !strings.HasPrefix(serverAddress, "http://") && !strings.HasPrefix(serverAddress, "https://") {
+		serverAddress = "http://" + serverAddress
+	}
 
 	myAgent := &agent.Agent{
 		Collector:      collector,
-		ServerAddress:  "http://localhost" + flags.FlagRunAddr,
+		ServerAddress:  serverAddress,
 		PollInterval:   time.Duration(flags.FlagPollInterval) * time.Second,
 		ReportInterval: time.Duration(flags.FlagReportInterval) * time.Second,
 	}
@@ -26,5 +32,5 @@ func main() {
 	go myAgent.StartPolling()
 	go myAgent.StartReporting()
 
-	select {}
+	select {} // блокируем main
 }
