@@ -26,7 +26,7 @@ func main() {
 
 	log.Println("Server is starting on", flags.FlagRunAddr)
 	if err := http.ListenAndServe(flags.FlagRunAddr, r); err != nil {
-		panic(err)
+		log.Fatalf("Failed to start server: %v", err)
 	}
 
 }
