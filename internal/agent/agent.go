@@ -2,6 +2,7 @@ package agent
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -40,10 +41,12 @@ func (a *Agent) StartReporting() {
 				value = fmt.Sprintf("%d", *m.Delta)
 			}
 			url := fmt.Sprintf("%s/update/%s/%s/%s", a.ServerAddress, m.MType, m.ID, value)
-			_, err := http.Post(url, "text/plain", nil)
+			resp, err := http.Post(url, "text/plain", nil)
 			if err != nil {
 				fmt.Printf("Error sending metric %s: %v\n", m.ID, err)
 			}
+			io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
 		}
 	}
 
@@ -60,10 +63,14 @@ func (a *Agent) ReportOnce() {
 			value = fmt.Sprintf("%d", *m.Delta)
 		}
 
-		http.Post(
-			fmt.Sprintf("%s/update/%s/%s/%s", a.ServerAddress, m.MType, m.ID, value),
-			"text/plain",
-			nil,
-		)
+		url := fmt.Sprintf("%s/update/%s/%s/%s", a.ServerAddress, m.MType, m.ID, value)
+		resp, err := http.Post(url, "text/plain", nil)
+		if err != nil {
+			fmt.Printf("Error sending metric %s: %v\n", m.ID, err)
+			continue
+		}
+
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
 	}
 }

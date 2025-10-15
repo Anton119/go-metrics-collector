@@ -33,6 +33,7 @@ func TestUpdateMetrics(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	resp := w.Result()
+	defer resp.Body.Close()
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
@@ -48,6 +49,7 @@ func TestGetMetrics(t *testing.T) {
 	r.ServeHTTP(wGet, reqGet)
 
 	respGet := wGet.Result()
+	defer respGet.Body.Close()
 	require.Equal(t, http.StatusOK, respGet.StatusCode)
 }
 
@@ -62,5 +64,6 @@ func TestGetAllMetrics(t *testing.T) {
 	r.ServeHTTP(wAll, reqAll)
 
 	respAll := wAll.Result()
+	defer respAll.Body.Close()
 	require.Equal(t, http.StatusOK, respAll.StatusCode)
 }

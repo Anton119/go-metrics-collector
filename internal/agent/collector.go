@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"runtime"
 	"sync"
-	"time"
 
 	models "github.com/Anton119/go-metrics-collector.git/internal/model"
 )
@@ -17,7 +16,6 @@ type Collector struct {
 }
 
 func NewCollector() *Collector {
-	rand.Seed(time.Now().UnixNano())
 	return &Collector{
 		gauges:   make(map[string]float64),
 		counters: map[string]int64{},
