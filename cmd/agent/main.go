@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"strings"
 	"time"
@@ -29,8 +30,12 @@ func main() {
 	log.Printf("Agent starting. PollInterval=%ds, ReportInterval=%ds, ServerAddress=%s\n",
 		flags.FlagPollInterval, flags.FlagReportInterval, myAgent.ServerAddress)
 
-	go myAgent.StartPolling()
-	go myAgent.StartReporting()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go myAgent.StartPolling(ctx)
+
+	go myAgent.StartReporting(ctx)
 
 	select {} // блокируем main
 }

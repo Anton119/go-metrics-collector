@@ -1,12 +1,23 @@
 package handler
 
 import (
-	"fmt"
+	"errors"
+	"html/template"
+	"log"
 	"net/http"
+	"strconv"
 
 	models "github.com/Anton119/go-metrics-collector.git/internal/model"
 	"github.com/Anton119/go-metrics-collector.git/internal/service"
 	"github.com/go-chi/chi/v5"
+)
+
+var (
+	ErrEmptyMetricName = errors.New("имя метрики не указано")
+	ErrInvalidValue    = errors.New("неверный формат значения")
+	ErrInvalidType     = errors.New("неверный тип метрики")
+	ErrMetricNotFound  = errors.New("метрика не найдена")
+	ErrNoMetrics       = errors.New("метрики не найдены")
 )
 
 type MetricsHandler struct {
@@ -20,7 +31,7 @@ func NewMetricsHandler(svc *service.MetricsService) *MetricsHandler {
 }
 
 func (h *MetricsHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("[Server] UpdateMetrics called: %s %s\n", r.Method, r.URL.Path)
+	log.Printf("[Server] UpdateMetrics called: %s %s\n", r.Method, r.URL.Path)
 
 	if r.Method != http.MethodPost {
 		http.Error(w, "неверный метод запроса", http.StatusBadRequest)
@@ -32,27 +43,30 @@ func (h *MetricsHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 	value := chi.URLParam(r, "value")
 
 	err := h.svc.UpdateMetrics(mType, id, value)
-
 	if err != nil {
-		fmt.Printf("[Server] Error updating metric: %s/%s = %s, %v\n", mType, id, value, err)
+		log.Printf("[Server] Error updating metric: %s/%s = %s, %v\n", mType, id, value, err)
 
-		switch err.Error() {
-		case "имя метрики не указано", "неверный формат значения", "неверный тип метрики":
+		switch {
+		case errors.Is(err, ErrEmptyMetricName):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		case errors.Is(err, ErrInvalidValue):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		case errors.Is(err, ErrInvalidType):
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		default:
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	fmt.Printf("[Server] Metric updated successfully: %s/%s = %s\n", mType, id, value)
+	log.Printf("[Server] Metric updated successfully: %s/%s = %s\n", mType, id, value)
 	w.Write([]byte("ok"))
 
 }
 
 func (h *MetricsHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("[Server] GetMetrics called: %s %s\n", r.Method, r.URL.Path)
+	log.Printf("[Server] GetMetrics called: %s %s\n", r.Method, r.URL.Path)
 
 	if r.Method != http.MethodGet {
 		http.Error(w, "неверный метод запроса", http.StatusBadRequest)
@@ -64,7 +78,11 @@ func (h *MetricsHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 
 	metrics, err := h.svc.GetMetrics(id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		if errors.Is(err, ErrMetricNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -72,20 +90,37 @@ func (h *MetricsHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "тип метрики не совпадает", http.StatusBadRequest)
 		return
 	}
-	fmt.Printf("[Server] Returning metric: %s = ", id)
+	log.Printf("[Server] Returning metric: %s = ", id)
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	if mType == models.Gauge {
-		w.Write([]byte(fmt.Sprintf("%g", *metrics.Value)))
+		w.Write([]byte(strconv.FormatFloat(*metrics.Value, 'f', -1, 64)))
 	} else if mType == models.Counter {
-		w.Write([]byte(fmt.Sprintf("%d", *metrics.Delta)))
+		w.Write([]byte(strconv.FormatInt(*metrics.Delta, 10)))
 	} else {
 		w.Write([]byte("значение не установлено"))
 	}
 }
 
-func (h *MetricsHandler) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
+type MetricView struct {
+	ID    string
+	MType string
+	Value string
+}
 
+var metricsTemplate = template.Must(template.New("metrics").Parse(`
+<html>
+  <body>
+    <ul>
+      {{range .}}
+        <li>{{.ID}} ({{.MType}}) = {{.Value}}</li>
+      {{end}}
+    </ul>
+  </body>
+</html>
+`))
+
+func (h *MetricsHandler) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "неверный метод запроса", http.StatusBadRequest)
 		return
@@ -93,23 +128,31 @@ func (h *MetricsHandler) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 
 	allMetrics, err := h.svc.GetAllMetrics()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		if errors.Is(err, ErrNoMetrics) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	//пишет строку в w и добавляет перенос строки
-	fmt.Fprintln(w, "<html><body><ul>")
-
+	var viewData []MetricView
 	for _, m := range allMetrics {
-		var value string
+		var val string
 		if m.MType == models.Gauge {
-			value = fmt.Sprintf("%g", *m.Value)
+			val = strconv.FormatFloat(*m.Value, 'f', -1, 64)
 		} else {
-			value = fmt.Sprintf("%d", *m.Delta)
+			val = strconv.FormatInt(*m.Delta, 10)
 		}
-		fmt.Fprintf(w, "<li>%s (%s) = %s</li>", m.ID, m.MType, value)
+		viewData = append(viewData, MetricView{
+			ID:    m.ID,
+			MType: m.MType,
+			Value: val,
+		})
 	}
 
-	fmt.Fprintln(w, "</ul></body></html>")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := metricsTemplate.Execute(w, viewData); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }

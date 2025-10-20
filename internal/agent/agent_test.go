@@ -3,6 +3,7 @@ package agent_test
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,12 +31,15 @@ func TestCollector_Collect(t *testing.T) {
 
 	var gaugeCount, counterCount int
 	for _, m := range metrics {
-		if m.MType == "gauge" {
+		switch m.MType {
+		case "gauge":
 			require.True(t, expectedGauges[m.ID], "Unexpected gauge: %s", m.ID)
 			gaugeCount++
-		} else if m.MType == "counter" {
+		case "counter":
 			require.Equal(t, "PollCount", m.ID)
 			counterCount++
+		default:
+			t.Errorf("Unknown metric type: %s", m.MType)
 		}
 	}
 
@@ -46,7 +50,6 @@ func TestCollector_Collect(t *testing.T) {
 func TestAgent_ReportOnce(t *testing.T) {
 	received := make(map[string]bool)
 
-	// cоздаем тестовый сервер, который принимает метрики
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		received[r.URL.Path] = true
 		w.WriteHeader(http.StatusOK)
@@ -61,12 +64,22 @@ func TestAgent_ReportOnce(t *testing.T) {
 		ReportInterval: 10 * time.Millisecond,
 	}
 
-	// cобираем метрики один раз
 	collector.Collect()
 
 	agentInstance.ReportOnce()
 
-	time.Sleep(20 * time.Millisecond)
-
 	require.NotEmpty(t, received, "No metrics were received by the server")
+
+	found := false
+	for path := range received {
+		if pathContainsMetric(path, "RandomValue") || pathContainsMetric(path, "PollCount") {
+			found = true
+			break
+		}
+	}
+	require.True(t, found, "Expected metrics not received")
+}
+
+func pathContainsMetric(path, metricID string) bool {
+	return strings.Contains(path, metricID)
 }
