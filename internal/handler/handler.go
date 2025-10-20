@@ -52,7 +52,7 @@ func (h *MetricsHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrInvalidValue):
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		case errors.Is(err, ErrInvalidType):
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, err.Error(), http.StatusNotImplemented)
 		default:
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
