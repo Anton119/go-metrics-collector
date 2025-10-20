@@ -12,14 +12,6 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-var (
-	ErrEmptyMetricName = errors.New("имя метрики не указано")
-	ErrInvalidValue    = errors.New("неверный формат значения")
-	ErrInvalidType     = errors.New("неверный тип метрики")
-	ErrMetricNotFound  = errors.New("метрика не найдена")
-	ErrNoMetrics       = errors.New("метрики не найдены")
-)
-
 type MetricsHandler struct {
 	svc *service.MetricsService
 }
@@ -47,11 +39,11 @@ func (h *MetricsHandler) UpdateMetrics(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[Server] Error updating metric: %s/%s = %s, %v\n", mType, id, value, err)
 
 		switch {
-		case errors.Is(err, ErrEmptyMetricName):
+		case errors.Is(err, service.ErrEmptyMetricName):
 			http.Error(w, err.Error(), http.StatusBadRequest)
-		case errors.Is(err, ErrInvalidValue):
+		case errors.Is(err, service.ErrInvalidValue):
 			http.Error(w, err.Error(), http.StatusBadRequest)
-		case errors.Is(err, ErrInvalidType):
+		case errors.Is(err, service.ErrInvalidType):
 			http.Error(w, err.Error(), http.StatusNotImplemented)
 		default:
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -78,7 +70,7 @@ func (h *MetricsHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 
 	metrics, err := h.svc.GetMetrics(id)
 	if err != nil {
-		if errors.Is(err, ErrMetricNotFound) {
+		if errors.Is(err, service.ErrMetricNotFound) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
@@ -128,7 +120,7 @@ func (h *MetricsHandler) GetAllMetrics(w http.ResponseWriter, r *http.Request) {
 
 	allMetrics, err := h.svc.GetAllMetrics()
 	if err != nil {
-		if errors.Is(err, ErrNoMetrics) {
+		if errors.Is(err, service.ErrNoMetrics) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}

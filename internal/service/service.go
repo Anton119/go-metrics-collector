@@ -2,11 +2,18 @@ package service
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 
 	models "github.com/Anton119/go-metrics-collector.git/internal/model"
 	"github.com/Anton119/go-metrics-collector.git/internal/repository"
+)
+
+var (
+	ErrEmptyMetricName = errors.New("имя метрики не указано")
+	ErrInvalidValue    = errors.New("неверное значение")
+	ErrInvalidType     = errors.New("неизвестный тип метрики")
+	ErrMetricNotFound  = errors.New("метрика не найдена")
+	ErrNoMetrics       = errors.New("метрики не найдены")
 )
 
 type MetricsService struct {
@@ -21,7 +28,7 @@ func NewMetricsService(storage *repository.MemStorage) *MetricsService {
 
 func (s *MetricsService) UpdateMetrics(mType, id, val string) error {
 	if id == "" {
-		return errors.New("имя метрики не указано")
+		return ErrEmptyMetricName
 	}
 
 	metric := models.Metrics{
@@ -33,14 +40,14 @@ func (s *MetricsService) UpdateMetrics(mType, id, val string) error {
 	case models.Gauge:
 		f, err := strconv.ParseFloat(val, 64)
 		if err != nil {
-			return errors.New("неверное значение для gauge")
+			return ErrInvalidValue
 		}
 		metric.Value = &f
 
 	case models.Counter:
 		i, err := strconv.ParseInt(val, 10, 64)
 		if err != nil {
-			return errors.New("неверное значение для counter")
+			return ErrInvalidValue
 		}
 
 		if existing, ok := s.storage.GetMetrics(id); ok && existing.Delta != nil {
@@ -49,7 +56,7 @@ func (s *MetricsService) UpdateMetrics(mType, id, val string) error {
 		metric.Delta = &i
 
 	default:
-		return errors.New("неизвестный тип метрики")
+		return ErrInvalidType
 	}
 
 	s.storage.SetMetrics(metric)
@@ -59,7 +66,7 @@ func (s *MetricsService) UpdateMetrics(mType, id, val string) error {
 func (s *MetricsService) GetMetrics(id string) (models.Metrics, error) {
 	m, ok := s.storage.GetMetrics(id)
 	if !ok {
-		return models.Metrics{}, fmt.Errorf("метрика %s не найдена", id)
+		return models.Metrics{}, ErrMetricNotFound
 	}
 	return m, nil
 }
@@ -67,7 +74,7 @@ func (s *MetricsService) GetMetrics(id string) (models.Metrics, error) {
 func (s *MetricsService) GetAllMetrics() ([]models.Metrics, error) {
 	metrics := s.storage.GetAllMetrics()
 	if len(metrics) == 0 {
-		return []models.Metrics{}, fmt.Errorf("метрики не найдены")
+		return nil, ErrNoMetrics
 	}
 
 	return metrics, nil
